@@ -8,3 +8,6 @@ chapter1/file-copy/data/outbox/
 .settings
 .vertx
 .metadata
+.factorypath
+org.eclipse.jdt.core.prefs
+.vscode
