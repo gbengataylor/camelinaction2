@@ -30,6 +30,7 @@ public class FtpToJMSExample {
             @Override
             public void configure() {
                 from("ftp://rider.com/orders?username=rider&password=secret").to("jms:incomingOrders");
+                                                                            // to("jms:queue:incomingOrders") // default is 'queue'
             }
         });
 

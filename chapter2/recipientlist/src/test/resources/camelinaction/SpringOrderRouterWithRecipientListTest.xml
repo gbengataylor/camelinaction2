@@ -42,8 +42,9 @@
 
     <route>
       <from uri="jms:xmlOrders" />
-      <setHeader headerName="recipients">
-        <method ref="recipientsBean" method="recipients" />
+      <setHeader headerName="recipients"> <!-- set the a new header prop named recipients
+                    // using the RecipientsBean.recipients method -->
+        <method ref="recipientsBean" method="recipients" /> <!-- set the receipients list using the derived value-->
       </setHeader>
       <recipientList>
         <header>recipients</header>

@@ -43,7 +43,7 @@ public class OrderRouterTest extends CamelTestSupport {
         
                 // content-based router
                 from("jms:incomingOrders")
-                    .choice()
+                    .choice() // content-based router
                         .when(header("CamelFileName").endsWith(".xml"))
                             .to("jms:xmlOrders")  
                         .when(header("CamelFileName").endsWith(".csv"))

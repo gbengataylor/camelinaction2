@@ -53,9 +53,9 @@ public class OrderRouterWithStopTest extends CamelTestSupport {
                         .when(header("CamelFileName").regex("^.*(csv|csl)$"))
                             .to("jms:csvOrders")
                         .otherwise()
-                            .to("jms:badOrders").stop()
-                    .end()
-                    .to("jms:continuedProcessing");
+                            .to("jms:badOrders").stop() // don't go on
+                    .end() // end the CBR
+                    .to("jms:continuedProcessing"); // then continue result of CBR to next destination
                 
                 // test that our route is working
                 from("jms:xmlOrders")

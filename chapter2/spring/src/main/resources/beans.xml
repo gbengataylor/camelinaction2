@@ -6,9 +6,11 @@
        http://www.springframework.org/schema/beans/spring-beans.xsd">
 
   <bean id="myGreeter" class="camelinaction.EnglishGreeter"/>
+  <bean id="danishGreeter" class="camelinaction.DanishGreeter"/>
 
   <bean id="greetMeBean" class="camelinaction.GreetMeBean">
-    <property name="greeter" ref="myGreeter"/>
+    <!--<property name="greeter" ref="myGreeter"/> -->
+   <property name="greeter" ref="danishGreeter"/>
   </bean>
   
 </beans>

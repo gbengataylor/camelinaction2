@@ -36,7 +36,7 @@
           <to uri="jms:badOrders" />
           <stop />
         </otherwise>
-      </choice>
+      </choice> <!-- explicit end of CBR -->
       <to uri="jms:continuedProcessing" />
     </route>
 

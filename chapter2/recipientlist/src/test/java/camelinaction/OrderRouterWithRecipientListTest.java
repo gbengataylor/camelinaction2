@@ -51,8 +51,9 @@ public class OrderRouterWithRecipientListTest extends CamelTestSupport {
 	                        .to("jms:badOrders");        
                 
                 from("jms:xmlOrders")                
-	                .setHeader("recipients", method(RecipientsBean.class, "recipients"))
-	                .recipientList(header("recipients"));
+                    .setHeader("recipients", method(RecipientsBean.class, "recipients")) // set the a new header prop named recipients
+                    // using the RecipientsBean.recipients method
+	                .recipientList(header("recipients")); // set the receipients list using the derived value
                
                 from("jms:accounting")        
 	                .log("Accounting received order: ${header.CamelFileName}")

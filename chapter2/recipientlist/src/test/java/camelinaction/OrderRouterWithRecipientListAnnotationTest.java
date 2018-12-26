@@ -50,7 +50,7 @@ public class OrderRouterWithRecipientListAnnotationTest extends CamelTestSupport
 	                    .otherwise()
 	                        .to("jms:badOrders");        
                 
-                from("jms:xmlOrders").bean(AnnotatedRecipientList.class);
+                from("jms:xmlOrders").bean(AnnotatedRecipientList.class); // use annotated @Recipient List
                
                 from("jms:accounting")        
 	                .log("Accounting received order: ${header.CamelFileName}")

@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xmlns:broker="http://activemq.apache.org/schema/core"
-       xsi:schemaLocation="
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:broker="http://activemq.apache.org/schema/core" xsi:schemaLocation="
        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
        http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd
        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-  <!-- set up ActiveMQ broker -->
+
+
+  <!-- set up in-jvm ActiveMQ broker -->
+  <bean id="jms" class="org.apache.camel.component.jms.JmsComponent">
+    <property name="connectionFactory">
+      <bean class="org.apache.activemq.ActiveMQConnectionFactory">
+        <property name="brokerURL" value="vm://localhost" />
+      </bean>
+    </property>
+  </bean>
+  <!-- setup from github assuming using external broker-->
+  <!--
   <broker:broker useJmx="false" persistent="false" brokerName="localhost">
     <broker:transportConnectors>
       <broker:transportConnector name="tcp" uri="tcp://localhost:61616"/>
@@ -21,15 +29,36 @@
       </bean>
     </property>
   </bean>
+  -->
 
-  <bean id="downloadLogger" class="camelinaction.DownloadLogger"/>
+  <bean id="downloadLogger" class="camelinaction.DownloadLogger" /> <!-- can't reference anonymous class in spring so need to have a concrete impl -->
 
-  <camelContext xmlns="http://camel.apache.org/schema/spring">
+
+  <camelContext xmlns="http://camel.apache.org/schema/spring"> <!-- loads camel context -->
+
+    <!-- single routes example -->
+    <!--
     <route>
-      <from uri="file:src/data?noop=true"/>
-      <process ref="downloadLogger"/>
-      <to uri="jms:incomingOrders"/>
+      <from uri="file:src/data?noop=true" />
+      <process ref="downloadLogger" /> 
+      <to uri="jms:incomingOrders" />
     </route>
+
+  -->
+
+  <!--same results but with multiple routes example though logging happens after jms is consumed -->
+
+    <route>
+      <from uri="file:src/data?noop=true" />
+      <to uri="jms:incomingOrders" />
+    </route>
+
+    <route>
+      <from uri="jms:incomingOrders" />
+      <process ref="downloadLogger" /> 
+    </route>
+
   </camelContext>
 
 </beans>
+

@@ -1,0 +1,170 @@
+ROUTING WITH CAMEL
+spring xml (IoC), beans etc
+
+SPRING
+you can import resources
+<import resource="jms-setup.xml"/>
+
+you can import route context
+
+<routeContext id="ftpToJms" xmlns="http://camel.apache.org/schema/spring">
+<route>
+<from uri="ftp://rider.com/orders?username=rider&password=secret"/>
+<to uri="jms:incomingOrders"/>
+</route>
+</routeContext>
+This routeContext element could be in another file or in the same file. You can then
+import the routes defined in this routeContext with the routeContextRef element.
+You use the routeContextRef element inside camelContext as follows:
+<camelContext xmlns="http://camel.apache.org/schema/spring">
+<routeContextRef ref="ftpToJms"/>
+</camelContext>
+
+Endpoints
+
+camelContext xmlns="http://camel.apache.org/schema/spring">
+<endpoint id="ridersFtp"
+uri="ftp://rider.com/orders?username=rider&amp;password=secret"/>
+
+<route>
+<from ref="ridersFtp"/>
+<to uri="jms:incomingOrders"/>
+</route>
+</camelContext>
+
+
+dynamic endpoints
+use toD
+
+.toD("jms:queue:${header.myDest}");
+And in the XML DSL:
+<toD uri="jms:queue:${header.myDest}"/>
+
+
+Property placeholders in endpoint URIs
+these are replaced on camel startup not on every new message (like toD does)
+use the Properties component from the camel context, load the properties file and then placeholders can be used in components like to
+
+        PropertiesComponent prop = camelContext.getComponent("properties", PropertiesComponent.class);
+        prop.setLocation("classpath:rider-test.properties");   
+
+
+        return new RouteBuilder() {
+            @Override
+            public void configure() throws Exception {
+                // load file orders from src/data into the JMS queue
+                from("file:src/data?noop=true")
+                    .to("jms:{{myDest}}");
+
+                // test that our route is working
+                from("jms:incomingOrders")
+                    .to("mock:incomingOrders");
+            }
+
+SPRING XML
+<bean id="properties"
+class="org.apache.camel.component.properties.PropertiesComponent">
+<property name="location" value="classpath:rider-test.properties"/>
+</bean>
+
+or
+
+<camelContext xmlns="http://camel.apache.org/schema/spring">
+<propertyPlaceholder id="properties"
+location="classpath:rider-test.properties"/>
+...
+
+see spring/src/test for examples
+
+Unfortunately, the Spring Framework doesn’t support using placeholders directly in
+endpoint URIs in the route, so you must define endpoints that include those place-
+holders by using the <endpoint> tag.
+
+ <context:property-placeholder properties-ref="properties"/>
+ <util:properties id="properties"
+                  location="classpath:rider-test.properties"/> 
+
+ <camelContext trace="true" id="camel" xmlns="http://camel.apache.org/schema/spring">
+
+  <endpoint id="myDest" uri="jms:${myDest}"/>     
+  
+  <route>
+   <from uri="file:src/data?noop=true" />
+   <to ref="myDest" />
+  </route>
+
+
+The Camel Properties component vs. Spring property placeholders
+The Camel Properties component is more powerful than the Spring property place­
+holder mechanism. The latter works only when defining routes using Spring XML, and
+you have to declare the endpoints in dedicated <endpoint> tags for the property place­
+holders to work.
+The Camel Properties component is provided out of the box, which means you can use
+it without using Spring at all. And it supports the various DSL languages you can use to
+define routes, such as Java, Spring XML, and Blueprint OSGi XML. On top of that, you can
+declare the placeholders anywhere in the route definitions
+
+
+USING RAW VALUES in ENDPOINT URIs
+without having to encode every character --
+from("ftp://rider.com/orders?username=rider&password=RAW(++%%w?rd)")
+
+
+2.6 ROUTING and EIPs
+
+CBR
+from("jms:incomingOrders")
+.choice()
+.when(predicate)
+.to("jms:xmlOrders")
+.when(predicate)
+.to("jms:csvOrders");
+
+You may have noticed that we didn’t fill in the predicates required for each when
+method. A predicate in Camel is a simple interface that has only a matches method:
+
+public interface Predicate {
+boolean matches(Exchange exchange);
+}
+ camel already comes with a bunch of predicates
+
+you can also use many expression languages such as Simple (see AppendixA), SpEL, JXPath, MVEL, OGNL, JavaScript, Groovy, XPath, XQuery
+
+otherwise clause
+ .otherwise
+
+
+Routing after a CBR
+you can use .end method to close out a choice (CBR), and then route the result of a choice to another destination. In XML the end call is unnecessary since the </choice> element explicitly calls the end block
+sometimes you don't want one of the options in a cbr to continue on to next destination, so the .stop() method can be used
+
+USING MESSAGE FILTERS
+filtering messages
+filter() EIP
+
+USING MULTICASTING
+sending to several destinations
+Multicast EIP
+
+by default this is sequential, so if the first fails, subsequent fail, to do parallelProcessing
+.multicast().parallelProcessing().to(...)
+
+<route>
+<from uri="jms:xmlOrders"/>
+<multicast parallelProcessing="true">
+<to uri="jms:accounting"/>
+<to uri="jms:production"/>
+</multicast>
+</route>
+
+to deal with exceptions - stopOnException
+
+
+USING RECIPIENT LISTS
+multicast is static. if you want more dynamic destinations use RecipientLit EIP
+it's like a filter/cbr that checks the content of the message and send to detinations based on that info
+you can use the exchange and message API to set this value or use the Receipt List Annotation
+
+WIRETAP EIP
+good way to audit messages in production..better than just logging
+
