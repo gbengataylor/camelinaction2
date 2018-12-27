@@ -1,0 +1,159 @@
+USING BEANS WITH CAMEL
+
+hard way to use a bean - use .process and an Processor
+
+Easy way!
+just use the bean method
+
+you can also use to
+
+from("direct:hello")
+.to("bean:helloBean?method=hello");
+And in XML DSL:
+<route>
+<from uri="direct:start"/>
+<to uri="bean:helloBean?method=hello"/>
+</route>
+
+4.2	
+Understanding the Service Activator pattern
+this pattern descibes a service that can be invoked easily from both messaging and non-messaging services
+acts a mediator between the requestor and the Pojo service.
+
+Camel acts as a service activator using the bean component, which sits
+between the caller and the bean
+
+4.3	
+Using Camel’s bean registries
+
+When Camel works with beans, it looks them up in a registry to locate them. Camel’s
+philosophy is to use the best of the available frameworks, so it uses a pluggable registry
+architecture to integrate them. Spring is one such framework,
+
+JndiRegistry - integrates with a JNDI-based registry. default when creating a camel context without specifying a registry. used for testing or running camel standalone
+
+SimpleRegistry-
+will replace jndiRegistry in camel 3.0. used for testing or running camel standalone.
+
+
+ApplicationContextRegistry
+default when using in a Spring env such as Spring boot or Spring XML file
+
+
+OsgiServiceRegistry and BlueprintContainerRegistry
+for use in Osgi env. The former is checked but if lookup fails, second is checked
+containers - apache karaf or apache servicemix
+
+CDIBeanRegistry
+CDI - uses the java spec that standardizes how Java Devs can integrate java beans in a loosely coupled way
+containers - JavaEE spec containers
+
+cool thing is that the camel route can be coded with CDI..see listing 4.7 or HelloRoute in cdi-bean
+Camel will automatically disvocer the route when starting. The class even has the endpoints injected. 
+
+this is the default registry when using camel with CDI
+
+4.4	
+Selecting bean methods
+
+Remember, Camel acts as a service activator using the bean component, which sits
+between the caller and the bean. At compile time, there are no direct bindings, and the
+JVM can’t link the caller to the bean; Camel must resolve this at runtime.
+
+section 4.4.2 describes the method-selecting algorithm
+
+@handler annotation can be used to specify the default method
+
+to avoid ambigious method exceptions, you can explicitly pass in the parameter type
+
+from("jms:queue:orders")
+.bean("orderService", "handleXML(String)")
+.to("jms:queue:handledOrders");
+
+4.5	
+Performing bean parameter binding
+
+Any bean method can have multiple parameters, and Camel must
+somehow pass in meaningful values. This process is known as bean parameter binding.
+
+Binding using built-­in types - you can bind the Exchange, Message, CamelContect, registry
+full list table 4.2
+
+Binding using Camel annotations
+you can bind things like the header and body of the exchange
+public String orderStatus(@Header("customerId") Integer customerId, @Body Integer orderId)
+
+or
+public String orderStatus(@Body Integer orderId, @Headers Map headers) {
+Integer customerId = (Integer) headers.get("customerId");
+String customerType = (String) headers.get("customerType");
+...
+}
+
+Binding using Camel language annotations
+for e.g XPATH
+
+<order customerId="123">
+<status>in progress</status>
+</order>
+
+public void updateStatus(@XPath("/order/@customerId") Integer customerId,
+@XPath("/order/status/text()") String status)
+
+see Table 4.4 for complete list
+
+full list table 4.3
+
+you can use @Bean on the parameter to set a value
+
+also examples using JSONPath
+
+Parameter binding using method name with signature
+you may want to completely decouple your java code from camel. so instead of using annotations, you camel route will have the details instead
+
+so instead of
+public String orderStatus(@Body Integer orderId,
+@Header("customerId") Integer customerId,
+@Header("customerType") Integer customerType) {
+...
+}
+from("direct:start")
+.bean("orderService", "orderStatus");
+
+you just have
+public String orderStatus(Integer orderId,
+Integer customerId,
+Integer customerType) {
+...
+}
+
+from("direct:start")
+.bean("orderService",
+"orderStatus(${body}, ${header.customerId}, ${header.customerType}");
+
+this uses the simple lscripting
+Bean-­binding summary
+Camel’s rules for bean parameter binding can be summarized as follows:
+¡	 All parameters having a Camel annotation will be bound (tables 4.3 and 4.4).
+¡	 All parameters of a Camel built-­in type will be bound (table 4.2).
+¡	 The first parameter is assumed to be the message in body (if not already bound).
+¡	 If a method name was given containing parameter-­binding details, those will be
+used (table 4.5).
+¡	 All remaining parameters will be unbound, and Camel will pass in empty values
+
+
+
+4.6	
+Using beans as predicates and expressions
+examples galore in xml and java
+
+then example of compound predicates in java
+
+for dynamic routes, you can utilize bean to build but may be good to use toD
+
+
+
+
+
+
+
