@@ -1,0 +1,271 @@
+TRANSFORMING DATA WITH CAMEL
+
+data format transformtation  - e.g CSV to XML
+data type transofmration - String to javax.jms.TextMessage
+
+Camel has built-in type converter mechanism
+
+see Table 3.1 on pg 77
+
+
+3.2	
+Transforming data by using EIPs and Java
+
+Message Translator EIP
+Using Processor, Java beans, <transform>
+
+Processor (implement Processor and exchange method)
+- you work on the Exhange object. can get the input Message (getIn) and manipulate
+use as
+.process(new ExtendedProcessor())
+
+    <bean id="csvProcessor" class="camelinaction.OrderToCsvProcessor"/>
+
+	<process ref ="csvProcessor"> 
+
+
+Java beans
+no dependency on camel
+write you bean that takes the input (can be string)
+
+.bean(new JavaBeanProcessor())
+
+    <bean id="csvProcessor" class="camelinaction.OrderToCsvProcessor"/>
+
+        <bean ref ="csvProcessor">
+
+transform method 
+
+java dsl
+e.g
+from("direct:start")
+.transform(body().regexReplaceAll("\n", "<br/>"))
+.to("mock:result");
+
+
+from("direct:start")
+.transform(new Expression() {
+public <T> T evaluate(Exchange exchange, Class<T> type) {
+String body = exchange.getIn().getBody(String.class);
+body = body.replaceAll("\n", "<br/>");
+body = "<body>" + body + "</body>";
+return (T) body;
+}
+})
+.to("mock:result");
+
+xml dsl
+<bean id="htmlBean" class="camelinaction.HtmlBean"/>
+<camelContext id="camel" xmlns="http://camel.apache.org/schema/spring">
+<route>
+<from uri="direct:start"/>
+<transform>
+<method bean="htmlBean" method="toHtml"/>
+</transform>
+<to uri="mock:result"/>
+</route>
+</camelContext>
+
+use scripting language
+<transform>
+<simple>Hello ${body} how are you?</simple>
+</transform>
+
+using content enricher EI
+an existing message has data added from another source
+
+pollEnrich - uses consumer, read file as source
+  - can add timeout of -1 (block until message exists), 0 (if message doesnt exist, conitune, never blocks), > 0 (wait x for message, then continue)
+enrich - uses produceer - write message content to a file. http component only works with enrich
+
+ 
+Camel uses the org.apache.camel.processor.aggregate.AggregationStrategy inter-
+face to merge the result from the source with the original message, as follows:
+Exchange aggregate(Exchange oldExchange, Exchange newExchange);
+
+for e.g
+.pollEnrich(url, new AggregationStrategy() {
+ ...
+
+<bean id="quoteStrategy" class="camelinaction.QuoteStrategy"/>
+<route>
+  <from uri="jms:queue:quotes"/>
+  <enrich url="netty4:tcp://riders.com:9876?textline=true&amp;sync=true" strategyRef="quoteStrategy"/>
+...
+
+
+3.3	
+Transforming XML
+via XSLT component (stylesheets) and XML marshaling
+
+XSLT
+camel provides an XSLT compoment as part of camel core
+
+from("file://rider/inbox")
+.to("xslt://camelinaction/transform.xsl")
+.to("jms:queue:transformed")
+
+<none> xslt://camelinaction/transform.xsl If no prefix is provided, Camel loads the resource from the classpath.
+file: xslt://file:/rider/config/transform.xml Loads the resource from the filesystem.
+http: xslt://http://rider.com/styles/transform.xsl Loads the resource from a URL.
+ref: xslt://ref:resourceId Look up the resource from the registry.
+bean: xslt://bean:nameOfBean.methodName Look up a bean in the registry and call a method which returns the resource
+
+XML marshalling
+
+xstream
+camel-xtstream.jar and xtream library to use the xstream 
+
+object to xml
+<route>
+<from uri="direct:foo"/>
+<marshal><xstream/></marshal>
+<to uri="jms:queue:foo"/>
+</route>
+
+from("direct:foo").marshal().xstream().to("jms:queue:foo");
+
+xml to object
+<camelContext id="camel" xmlns="http://camel.apache.org/schema/spring">
+<dataFormats>
+<xstream id="myXstream"/>
+</dataFormats>
+
+<route>
+<from uri="jms:queue:foo"/>
+<unmarshal ref="myXstream"/>
+<to uri="direct:handleFoo"/>
+</route>
+
+
+jaxb
+not as simple as xstream but offers more bells and whistles for controlling the XML output. no need for any libraries since jaxb is in java lnag
+but you have to annotate (well, yeah..)
+
+<dataFormats>
+<jaxb id="jaxb" contextPath="camelinaction"/> <!-- context path is folder in resources folder that holds jaxb.index file -->
+</dataFormats>
+
+ context path =---NOTE   To tell JAXB which classes are JAXB annotated, you need to drop a spe-
+cial jaxb.index file into each package in the classpath containing the POJO
+classes. It’s a plain-text file in which each line lists the class name. In the preced-
+ing example, the file contains a single line with the text PurchaseOrder .
+
+<route>
+<from uri="direct:order"/>
+<marshal ref="jaxb"/>
+<to uri="jms:queue:order"/>
+</route>
+<route>
+<from uri="jms:queue:order"/>
+<unmarshal ref="jaxb"/>
+<to uri="direct:doSomething"/>
+</route>
+</camelContext
+
+
+3.4	
+Transforming with data formats
+
+see table 3.3 for out of box data formats in Camel
+
+using camel csv data format
+from("file://rider/csvfiles")
+.unmarshal().csv()
+.split(body()).to("jms:queue:csv.record");
+
+xml equivalent
+<camelContext id="camel" xmlns="http://camel.apache.org/schema/spring">
+<route>
+<from uri="file://rider/csvfiles"/>
+<unmarshal><csv/></unmarshal>
+<split>
+<simple>body</simple>
+<to uri="jms:queue:csv.record"/>
+</split>
+</route>
+</camelContext>
+
+this reads line by line and stores all lines in a message body of type java.util.List<List> type.
+the split splits the bodyto java.util.List<List<String>> rows
+and each row is now in a jms queue
+
+Using Camel’s Bindy data format
+camel-vsv uses generic data types such as Map or List. sometimes you'll want to map to model objects you already have in memory
+camel-bindy helps with that
+annotate POJO with bindy CSV annotations
+
+//map csv to purchaseOrder pojo
+from("direct:toCsv")
+.marshal().bindy(BindyType.Csv,
+camelinaction.bindy.PurchaseOrder.class)
+.to("mock:result");
+
+unmarshal
+        from("direct:toObject")
+                        .unmarshal().bindy(BindyType.Csv, camelinaction.bindy.PurchaseOrder.class)
+                        .to("mock:result");
+
+
+using camel's JSON format
+camel provides six components to support JSON data format- camel-xstream, camel-gson,
+­camel-jackson, camel-boon, camel-fastjson, camel-johnzon. This section focuses on
+camel-jackson because Jackson is a popular JSON library.
+
+
+camel provides six components to support JSON data format- camel-xstream, camel-gson,
+­camel-jackson, camel-boon, camel-fastjson, camel-johnzon. This section focuses on
+camel-jackson because Jackson is a popular JSON library.
+
+eg
+<bean id="orderService" class="camelinaction.OrderServiceBean"/>
+<camelContext id="camel" xmlns="http://camel.apache.org/schema/spring">
+<dataFormats>
+<json id="json" library="Jackson"/>
+</dataFormats>
+<route>
+<from uri="jetty://http://0.0.0.0:8080/order"/>
+<bean ref="orderService" method="lookup"/>
+<marshal ref="json"/>
+</route>
+</camelContext>
+
+3.5	
+Transforming with templates
+
+TypeConverterRegistry is where all the type converters are registered when Camel is
+started. At runtime, Camel uses the TypeConverterRegistry ’s lookup method to look
+up a suitable TypeConverter :
+TypeConverter lookup(Class<?> toType, Class<?> fromType);
+
+By using TypeConverter , Camel can then convert one type to another by using Type-
+Converter ’s convertTo method, which is defined as follows:
+<T> T convertTo(Class<T> type, Object value);
+
+NOTE   Camel implements about 350 or more type converters out of the box, which are capable of converting to and from the most commonly used types.
+
+On startup, Camel loads all the type converters into the TypeConverterRegistry by using
+a classpath-scanning solution. This allows Camel to pick up type converters not only from
+camel-core, but also from any of the other Camel components, including your Camel
+applications.
+
+Camel uses org.apache.camel.impl.converter.AnnotationTypeConverterLoader
+to scan and load the type converters. To avoid scanning zillions of classes, it reads
+a service discovery file in the META-INF folder: META-INF/services/org/apache/
+camel/TypeConverter. This is a plain-text file that has a list of fully qualified class names
+and packages that contain Camel type converters. The special file is needed to avoid
+scanning every possible JAR and all their packages, which would be time-consuming.
+This special file tells Camel whether the JAR file contains type converters
+
+
+AnnotationTypeConverterLoader loads those classes that have been annotated with
+@Converter , and then searches within them for public methods that are annotated
+with @Converter . Each of those methods is considered a type converter. Yes, the class @
+Converter annotation is a bit of overkill when we’ve already defined the class name in
+the TypeConverter text file. We need this because we can also specify package names,
+which could include many classes. For example, a package name of org.apache.camel
+.component.cxf.converter also could have been provided in the TypeConverter text
+file and would have included CxfConverter and CxfPayloadConverter . Using the fully
+qualified class name is preferred, though, because Camel loads them more quickly.
+
+
