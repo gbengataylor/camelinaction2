@@ -27,7 +27,9 @@ public class SplitterBeanTest extends CamelTestSupport {
                 from("direct:start")
                     // split the message using the CustomerService bean
                     // which can be done using the method call expression
-                    .split().method(CustomerService.class, "splitDepartments")
+                    //.split().method(CustomerService.class, "splitDepartments")
+                    // OR using simple
+                    .split().simple("${body.departments}")
                         .to("log:split")
                         .to("mock:split");
             }

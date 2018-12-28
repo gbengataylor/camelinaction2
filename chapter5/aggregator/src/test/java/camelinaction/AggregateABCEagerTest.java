@@ -60,6 +60,8 @@ public class AggregateABCEagerTest extends CamelTestSupport {
                     .aggregate(header("myId"), new MyEndAggregationStrategy())
                         // must enable eager check to have the completion predicate
                         // to match when we received END in the arrived message body
+                        //  .eagerCheckCompletion() - this will check the incoming Exchange for evaluation instead of checking
+                        // after the aggregation
                         .completionPredicate(body().isEqualTo("END")).eagerCheckCompletion()
                         // do a little logging for the published message
                         .log("Sending out ${body}")

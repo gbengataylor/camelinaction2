@@ -42,6 +42,7 @@ public class SplitterAggregateABCTest extends CamelTestSupport {
                         .log("Split line ${body}")
                         // and have them translated into a quote
                         .bean(WordTranslateBean.class)
+                        .log("Translated line ${body}") // print out translated line
                         // and send it to a mock
                         .to("mock:split")
                     .end()

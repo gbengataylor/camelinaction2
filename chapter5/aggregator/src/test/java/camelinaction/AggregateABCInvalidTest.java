@@ -56,7 +56,7 @@ public class AggregateABCInvalidTest extends CamelTestSupport {
                     // and complete when we have aggregated 3 messages
                     .aggregate(header("myId"), new MyAggregationStrategy()).completionSize(3)
                         // and ignore invalid correlation keys
-                        .ignoreInvalidCorrelationKeys()
+                        .ignoreInvalidCorrelationKeys() // without this an exception is thrown with an invalid correlation id
                         // do a little logging for the published message
                         .log("Sending out ${body}")
                         // and send it to the mock

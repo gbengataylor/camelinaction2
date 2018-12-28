@@ -1,0 +1,162 @@
+ENTERPRISE INTEGRATION PATTERNS
+camel supports about 70 patterns
+we cover the 5 most powerful here
+
+
+the aggregator and spitter can be combined to create the Composed Message Processor EIP
+
+to route messages dynamically use EIPS such as recipent list, routing slip and dynamic router
+
+¡	 The Aggregator EIP
+----------------------------------
+Used to combine results of individual but related messages into a single outgoing mes-
+sage. You can view this as the reverse of the Splitter pattern.
+
+combines many messages into a single combined message
+
+These 3 settings MUST be configured for the aggregator to work correctly
+
+¡	 Correlation identifier—An Expression that determines which incoming messages
+belong together
+¡	 Completion condition—A Predicate or time-­based condition that determines
+when the result message should be sent
+¡	 Aggregation strategy—An AggregationStrategy that specifies how to combine the
+messages into a single message
+
+the invocation of the aggregationStrategy is thread safe ensure that only one thread is invoking the method at one time
+
+Completion condition
+table 5.3 on pg 153 adds a list of conditions, such as size, timeout, interface, predicate, forceCompletion etc
+it is possible to have support for multiple completion conditions. however, which ever condition completes first will result in aggregated message being published
+The Aggregator EIP allows you to use as many completion conditions as you like. But the completionTimeout and completionInterval conditions can’t be used at the same time.
+Using multiple completion conditions makes good sense if you want to ensure that aggregated messages eventually get published.
+
+Aggregated Exchange properties that Camel enriches Exchange with can be found in table 5.4
+propertes such as Size, correlation key, timeout etc
+then such properties can be referened by
+
+.log("Completed by ${property.CamelAggregatedCompletedBy}")
+
+there are more configurations in table 5.5
+
+You can use POJOs as AggregationStrategy rather than implementing that Camel class. it just needs to follow a certain method signature with the old and new body, then old and new headers (optional), and old and new properties (optional) pg 158
+
+How do you deal with persistence?
+by default the aggregator keeps state in memory so if host container crashes, state will be lost
+pluggable feature called AggregationRepository
+by default, camel uses MemoryAggregationRepository.
+others are 
+¡	 RecoverableAggregationRepository —An interface that defines additional
+operations supporting recovery. Camel provides several such repositories out
+of the box, including JdbcAggregationRepository , CassandraAggregation-
+Repository , LevelDBAggregationRepository , and HazelcastAggregationRe-
+pository . We cover recovery in section 5.2.4.
+¡	 OptimisticLockingAggregationRepository —An interface that defines addi-
+tional operations supporting optimistic locking. The MemoryAggregationRepos-
+itory and JdbcAggregationRepository repositories implement this interface.
+
+
+Sometimes messages need to be recovered as the Aggregator could fail during routing
+you can use Camel error handlers (chapter 11) or RecoverableAggregationRepository (covered here)
+
+Camel error handlers aren’t tightly coupled with the Aggregator, so message handling is in the hands of the error handler. If a message repeatedly fails, the error handler
+can deal with this only by retrying or eventually giving up and moving the message to a dead letter channel.
+
+RecoverableAggregationRepository , on the other hand, is tightly integrated into the Aggregator, which allows additional benefits such as using the persistence store for
+recovery and offering transactional capabilities. It ensures that published messages that fail will be recovered and redelivered. You can think of this as what a JMS broker, such
+as Apache ActiveMQ, can do by bumping failed messages back up on the JMS queue for redelivery.
+
+¡	 The Splitter EIP
+----------------------------------
+Used to split a message into pieces that are routed separately.
+if body is a java.util.list, easy to split
+
+see pg 169 for splitter algorithm
+a range of types is supported
+
+you can also use beans for splitting and use a method to return a list (or valid type) or use simple expression
+
+
+how do you go about Splitting big messages?
+a split can be set to stream
+see examples pag 173/174
+
+How do you go about aggregating split messages?
+Composed Message Processor EIP
+you can pass the aggregation strategy to a split to make this possible
+if message translator is needed a bean can be used for this
+
+from("direct:start")
+.split(body(), new MyAggregationStrategy())
+.log("Split line ${body}")
+.bean(WordTranslateBean.class)
+.to("mock:split")
+.end()
+.log("Aggregated ${body}
+
+
+what to do when errors occur when slitting?
+You have two choices for handling errors with the Splitter:
+¡	 Stop—The Splitter will split and process each message in sequence. Suppose the
+second message failed. In this situation, you could either immediately stop and
+let the exception propagate back, or you could continue splitting the remain-
+der of the messages, and let the exception propagate back at the end (default
+behavior).
+¡	 Aggregate—You could handle the exception in AggregationStrategy and decide
+whether the exception should be propagated back.
+
+iWARNING   When using a custom AggregationStrategy with the Splitter, it’s
+important to know that you’re responsible for handling exceptions. If you
+don’t propagate the exception back, the Splitter will assume you’ve handled
+the exception and will ignore it.
+
+
+
+
+¡	 The Routing Slip EIP
+----------------------------------
+Used to route a message in a series of steps; the sequence of steps isn’t known at
+design time and may vary for each message.
+
+it can be as simple as putting the routing destination in the header
+or computing it using a bean
+you can have multiple destinations in the slip
+
+you can use an expression as the routing slip
+also on the bean you can have the @RoutingSlip annotation. in this case don't use routingSlip in the DSL, just use bean
+
+¡	 The Dynamic Router EIP
+----------------------------------
+Used to route messages with a dynamic router dictating where the message goes
+
+goal hear is to let Camel keep invoking the route method until it returns null. 
+
+can either use dynamicRouter that calls a bean and it's method or just annotate bean with @DynamicRouter and call bean() directly
+
+¡	 The Load Balancer EIP
+----------------------------------
+Used to balance the load to a given endpoint by using a variety of balancing policies.
+This isn't actually listed in the EIP book but still implemented in Camle. a use case:
+Suppose you route PDF messages to network printers, and those printers come and go
+online. You can use the Load Balancer to send the PDF messages to another printer if
+one printer is unresponsive.
+
+
+The Camel Load Balancer EIP is a processor that implements the org.apache.camel.
+processor.loadbalancer.LoadBalancer interface. LoadBalancer offers methods to
+add and remove processors that should participate in the load balancing.
+By using processors instead of endpoints, the load balancer is capable of balancing
+anything you can define in your Camel routes. But, that said, you’ll most often balance
+across a number of remote services
+
+
+6 strategies
+Random Chooses a processor randomly.
+Round-­robin Chooses a processor in a round-­robin fashion, which spreads the load evenly. This is a classic and well-­known strategy. We covered this in section 5.6.1.
+Sticky Uses an expression to calculate a correlation key that dictates the processor chosen. You can think of this as the session ID used in HTTP requests.
+Topic Sends the message to all processors. This is like sending to a JMS topic.
+Failover Retries using another processor. We cover this in section 5.6.3.
+Custom Uses your own custom strategy. This is covered in section 5.6.4.
+
+
+

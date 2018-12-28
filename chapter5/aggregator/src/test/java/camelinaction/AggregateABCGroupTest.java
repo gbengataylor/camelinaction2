@@ -69,7 +69,7 @@ public class AggregateABCGroupTest extends CamelTestSupport {
                     // aggregate based on header correlation key
                     .aggregate(header("myId"), new GroupedExchangeAggregationStrategy()).completionSize(3)
                         // do a little logging for the published message
-                        .log("Sending out ${body}")
+                        .log("Sending out ${body}, has ${property.CamelAggregatedSize} messages")
                         // and send it to the mock
                         .to("mock:result");
             }

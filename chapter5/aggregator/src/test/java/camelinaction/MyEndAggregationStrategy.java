@@ -36,6 +36,7 @@ public class MyEndAggregationStrategy implements AggregationStrategy {
 
         // if its the END message then do not aggregate
         if ("END".equals(newBody)) {
+            System.out.println("END message received, don't aggregate");
             return oldExchange;
         }
 

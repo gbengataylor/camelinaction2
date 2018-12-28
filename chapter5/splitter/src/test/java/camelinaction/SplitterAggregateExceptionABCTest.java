@@ -41,6 +41,9 @@ public class SplitterAggregateExceptionABCTest extends CamelTestSupport {
                 from("direct:start")
                     // tell Splitter to use the aggregation strategy which handles and ignores exceptions
                     .split(body(), new MyIgnoreFailureAggregationStrategy())
+
+                    // test propagation
+                //    .split(body(), new MyPropagateFailureAggregationStrategy())
                         // log each splitted message
                         .log("Split line ${body}")
                         // and have them translated into a quote

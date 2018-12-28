@@ -42,6 +42,7 @@ public class AggregateTimeoutThreadpoolTest extends CamelTestSupport {
                     .aggregate(xpath("/order/@customer"), new MyAggregationStrategy())
                         // complete either when we have 2 messages or after 5 sec timeout
                         .completionSize(2).completionTimeout(5000)
+                        // use the new threadPool as the aggregator timeout checker instead of default of AggregateTimeoutChecker
                         .timeoutCheckerExecutorService(threadPool)
                         // do a little logging for the published message
                         .log("Completed by ${exchangeProperty.CamelAggregatedCompletedBy}")
