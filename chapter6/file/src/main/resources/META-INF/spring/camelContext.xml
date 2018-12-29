@@ -8,8 +8,14 @@
   <camelContext xmlns="http://camel.apache.org/schema/spring">
     <route>
       <from uri="stream:in?promptMessage=Enter something:"/>
-      <to uri="file:data/outbox"/>
+    <!--  <to uri="file:data/outbox"/> -->
+      <!--to set filename-->
+     <!-- <to uri="file:data/outbox?fileName=prompt.txt"/>
+     -->
+     <!--use expression langauge to set filename-->
+     <to uri="file:data/outbox?fileName=${date:now:yyyyMMdd-­hh:mm:ss}.txt"/>
     </route>
   </camelContext>
 
 </beans>
+

@@ -68,6 +68,7 @@ public class JdbcTest extends CamelTestSupport {
                 from("jms:accounting")
                     .to("bean:orderToSql")
                     .to("jdbc:dataSource?useHeadersAsParameters=true")
+                    // useHeadersAsParameters - use the headers set in the orderToSql bean
                     .to("mock:result");
             }
         };

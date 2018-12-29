@@ -19,7 +19,7 @@ public class QuartzCronTest extends CamelTestSupport {
             @Override
             public void configure() throws Exception {
                 from("quartz2://report?cron=0/2+*+*+*+*+?")
-                .setBody().simple("I was fired at ${header.fireTime}")
+                .setBody().simple("**********===============--------------->I was fired at ${header.fireTime}")
                 .to("stream:out")
                 .to("mock:end"); 
             }

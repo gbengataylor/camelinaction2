@@ -20,6 +20,7 @@ public class FilePrinterTest extends CamelTestSupport {
         return new RouteBuilder() {
             @Override
             public void configure() throws Exception {
+                // noop=true doesn't delete the file after consumption
                 from("file:data/inbox?noop=true").to("stream:out")
                     .to("mock:end");
             }

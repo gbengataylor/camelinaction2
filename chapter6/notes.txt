@@ -1,0 +1,257 @@
+CAMEL COMPONENTS
+over 280 components out of box and dozens more in the community.  these are connectors to allow you to bridge many aPIs, protocols, data dormats etc, saving you valuable time to code these integrations yourself
+
+Camel component implements the Component interface, which is camel context aware
+
+you can manually add components to the camelContext
+or autodiscovery - Autodiscovery is the way the components that ship with Camel are registered. To dis-
+cover new components, Camel looks in the META-­INF/services/org/apache/camel/
+component directory on the classpath for files. Files in this directory determine the
+name of a component and the fully qualified class name.
+
+Bean is a component that has been used extensively in most of the examples
+
+Most of the components in Camel are in separate Maven modules from the camel-­
+core module, because they usually depend on third-­party dependencies that would
+bloat the core. For example, the Atom component depends on Apache Abdera to com-
+municate over Atom. You wouldn’t want to make every Camel application depend on
+Abdera, so the Atom component is included in a separate camel-­atom module.
+The camel-­core module has 24 useful components built in, though. These are listed
+in table 6.2.
+
+FILEs
+note: noop=false will delete the file read
+table 6.3 has other uri options on pg 200
+
+By default, Camel also locks any files that are being processed. The locks are released
+after routing is complete.
+
+FTP
+three flavors of FTP:
+¡	 Plain FTP mode transfer
+¡	 Secure FTP (SFTP) for secure transfer
+¡	 FTP Secure (FTPS) for transfer with the Transport Layer Security (TLS) and Secure Sockets Layer (SSL) cryptographic protocols enabled
+
+uri options table 6.4 on pg 204
+
+to use add camel-ftp to pom
+
+
+JMS
+
+Camel doesn’t ship with a JMS provider; you need to configure Camel to use a specific JMS provider by passing in a ConnectionFactory instance. For example, to connect to
+an Apache ActiveMQ broker listening on port 61616 of the local host, you could configure the JMS component like this:
+<bean id="jms" class="org.apache.camel.component.jms.JmsComponent">
+<property name="connectionFactory">
+<bean class="org.apache.activemq.ActiveMQConnectionFactory">
+<property name="brokerURL" value="tcp://localhost:61616"/>
+</bean>
+</property>
+</bean>
+
+to use jms component, add camel-jms to pom
+
+The tcp://localhost:61616 URI passed in to ConnectionFactory is JMS provider-specific. In this example, you’re using the ActiveMQConnectionFactory , so the URI is
+parsed by ActiveMQ. The URI tells ActiveMQ to connect to a broker by using TCP on port 61616 of the local host. If you want to connect to a broker over another protocol, ActiveMQ supports connections over VM, SSL, UDP, multicast, MQTT, AMQP, and so on.
+
+to use ActiveMQComponent (which automatically configures connection pooling for improved performance since by default a JMS ConnectionFactory doesn't pool connections to the broker but rather spins up a new connection for every message), add to pom
+
+<dependency>
+<groupId>org.apache.activemq</groupId>
+<artifactId>activemq-­camel</artifactId>
+<version>5.15.2</version>
+</dependency>
+
+use component like
+<bean id="activemq"
+class="org.apache.activemq.camel.component.ActiveMQComponent">
+<property name="brokerURL" value="tcp://localhost:61616"/>
+</bean>
+
+common URI options in table 6.5 on pg 206
+
+
+sending and receivig messages is simple
+
+request-reply messaging even with async using JMSReplyTo header and JMSCorrelationId. Camel takes care of this style of messaging so you don’t have to create special reply
+queues, correlate reply messages, and the like. By changing the message exchange pattern (MEP) to InOut , Camel will enable request-­reply mode for JMS.
+
+                from("jms:incomingOrders").inOut("jms:validate");                
+                from("jms:validate").bean(ValidatorBean.class);
+
+the inOut will return the output from the consumer of jms:validate
+
+
+*Message Mappings
+Body Mapping - see table 6.6 on 211 for mapping Camel body type to JMS message type and table 6.7 for vice versa
+
+Header Mapping  - see details on pg 212
+
+
+Networking: Netty4
+
+Camel uses netty to communicate over protocols like tcp and udp
+
+need camel-netty4
+
+Hand-­coding a TCP server is not  a trivial exercise. You’d need to spin up new threads for each incoming socket connection, as well as transform the body to
+Networking: Netty4 component a format suitable for JMS. Not to mention the pain involved in managing the low-­level
+networking protocols. In Camel, a possible solution is accomplished with a single line:
+
+from("netty4:tcp://localhost:8999?textline=true&sync=false")
+.to("jms:operations");
+
+Here you set up a TCP server on port 8999 by using Netty, and it parses messages by using the textline codec. The sync property is set to false to make this route
+InOnly —any clients sending a message won’t get a reply back.
+
+
+DATABASES: JDBC and JPA components
+actually has 5 db components
+¡	 JDBC component—Allows you to access JDBC APIs from a Camel route.
+¡	 SQL component—Allows you to write SQL statements directly into the URI of thecomponent for using simple queries. This component can also be used for calling stored procedures.
+¡	 JPA component—Persists Java objects to a relational database by using the Java Persistence Architecture.
+¡	 Hibernate component—Persists Java objects by using the Hibernate framework. This component isn’t distributed with Apache Camel because of licensinging compatibilities. You can find it at the camel-­extra project (https://github.com/camel-extra/camel-extra).
+¡	 MyBatis component—Allows you to map Java objects to relational databases
+
+JDBC--
+camel-jdbc
+
+the body is a "command" message so as such can't be used in a From DSL statement
+
+if you have a bean to convert your xml order to sql, then it can be called like this
+
+from("jms:accounting")
+.to("bean:orderToSql")
+.to("jdbc:dataSource?useHeadersAsParameters=true");
+
+
+JPA component -==-
+camel-jpa
+
+if Pojo is @Entity
+
+                from("seda:accounting")
+                    .to("jpa:camelinaction.PurchaseOrder")
+                    .to("mock:result");
+
+this will write the pojo to the corresponding db
+
+you can manually query the table via JPAEndpoint
+
+JpaEndpoint endpoint = context.getEndpoint("jpa:camelinaction.PurchaseOrder", JpaEndpoint.class);
+        EntityManager em = endpoint.getEntityManagerFactory().createEntityManager();
+
+        List list = em.createQuery("select x from camelinaction.PurchaseOrder x").getResultList();
+
+
+
+In-­memory messaging: Direct, Direct-­VM, SEDA, and VM components
+sync - direct, direct-vm - diff Direct used for communication within single camel context, direct-vm is within the vm
+async - seda, vm -- similar difference as above
+
+if you have 
+from("direct:startOrder")
+.to("cxf:bean:orderEndpoint");
+
+and then use a Producer template to send a request
+
+String reply =
+template.requestBody("direct:startOrder", params, String.class);
+
+ProducerTemplate creates a Producer under the hood that sends to the direct:start­ Order endpoint. In most other components, some processing happens between the pro-
+ducer and the consumer. For instance, in a JMS component, the message could be sent to a queue on a JMS broker. With the Direct component, the producer directly calls the
+consumer. And by directly, we mean that in the producer there’s a method invocation on the consumer. The only overhead of using the Direct component is a method call!
+
+however, if you need to operate async use seda or vm
+JMS may be overkill if within the same JVM or camel context. note there is no message persistence to disk so run the risk of losing messages if it crashes
+
+
+AUTOMATIC TASKS
+timer component can be used for simple recurring tasks. Schedule uses the improved Java Scheduler api since timer uses the older java.util.Timer
+
+Scheduler
+The Scheduler component comes with Camel’s core library and uses ScheduledExecutorService from the JRE to generate message exchanges at regular intervals. This component supports only consuming, because sending to a scheduler doesn’t make sense. Some common URI options are listed in table 6.13. on page 230
+
+e.g
+from("scheduler:myScheduler?delay=2000")
+.setBody().simple("Current time is ${header.CamelTimerFiredTime}")
+.to("stream:out");
+
+When the value of milliseconds gets large, you can opt for a shorter notation using the s , m , and h keywords. For example, 2,000 milliseconds can be written as 2s , meaning 2 seconds. 90,000 milliseconds can be written as 1m30s , and so on.
+When this scheduler fires an event, Camel creates an exchange with an empty body and sends it along the route. In this case, you’re setting the body of the message by using a Simple language expression.
+
+Quartz
+pretty advanced component. the Quartz2 component allows you to schedule the generation of message exchanges. But the Quartz2 component gives you much more control over how this scheduling happens. You can also take advantage of Quartz’s many other enterprise features.
+
+dependency - camel-quartz2
+
+from("quartz2:myTimer?trigger.repeatInterval=2000&trigger.repeatCount=-1")
+.setBody().simple("Current time is ${header.firedTime}")
+.to("stream:out")
+
+CRON triggers are possible too
+expression - <Seconds> <Minutes> <Hours> <Day of Month> <Month> <Day of week> <Year>
+
+The cron expression for occurring on the first day of each month at 6:00 a.m. is the
+following:
+0 0 6 1 * ?
+
+In this expression, the third digit denotes the hour at which to execute, and the fourth
+digit is the day of the month. You can also see that a star is placed in the month column
+so that every month will be triggered.
+
+                from("quartz2://report?cron=0/2+*+*+*+*+?")
+                .setBody().simple("I was fired at ${header.fireTime}")
+                .to("stream:out")
+                .to("mock:end"); 
+
+
+
+
+EMAIL
+
+Camel provides several components to work with email:
+¡	 Mail component—This is the primary component for sending and receiving email in Camel.
+¡	 AWS-­SES component—Allows you to send email by using the Amazon Simple Email Service (SES).
+¡	 GoogleMail component—Gives you access to Gmail via the Google Mail Web API.
+
+
+Sending email with SMTP
+In Camel, an SMTP URI looks like this:
+[smtp|stmps]://[username@]host[:port][?options]
+
+You'll first notice that you can select to secure your mail transfer with SSL by specifying a scheme of smtps instead of smtp . The host is the name of the mail server that will
+be sending the message, and username is an account on that server. The value of port defaults to 25 for SMTP, and 465 for SMTPS, and can be overridden if needed. The
+most common URI options are shown in table 6.15 on page 234.
+
+dependency - camel-mail
+
+to send email using a ProducerTemplate
+
+template.sendBody(
+"smtp://jon@localhost?password=secret&to=claus@localhost",
+"Yes, Camel rocks!");
+
+the subject header will default with cluas@localhost, the receipient email
+
+with a subject headr
+
+template.sendBodyAndHeader(
+"smtp://jon@localhost?password=secret&to=claus@localhost",
+"Yes, Camel rocks!",
+"subject", "Does Camel rock?");
+
+Receiving email with IMAP
+
+To consume email messages by using IMAP, you need to use a URI like this:
+[imap|imaps]://[username@]host[:port][?options]
+
+As with the SMTP component, you can select to secure your mail transfer with SSL by
+specifying a scheme of imaps instead of imap . The host is the name of the mail server
+that has the mail you want to consume, and username is an account on that server. The
+value of port defaults to 143 for IMAP, and 993 for IMAPS, and can be overridden if
+needed. The most common URI options are shown in table 6.16 on pg 236
+
+from("imap://claus@localhost?password=secret").to("mock:result");
+
+

@@ -49,8 +49,11 @@ public class OrderRouterWithSedaTest extends CamelTestSupport {
                     .when(header("CamelFileName").endsWith(".csv"))
                         .to("seda:csvOrders");
 
+                // both queues are listening 
                 from("seda:xmlOrders?multipleConsumers=true").to("jms:accounting");  
                 from("seda:xmlOrders?multipleConsumers=true").to("jms:production");  
+                // in real world the jms queues may be on another system
+                // the csv can be handled by the current container
                 
                 // test that our route is working
                 from("jms:accounting").process(new Processor() {
