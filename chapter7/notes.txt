@@ -1,0 +1,98 @@
+MICROSERVICES
+
+camel can run in any microservice runtime, it's just a jar
+
+popular
+-standalone
+-cdi
+-wildfly swarm
+- spring boot
+
+chapter 20, online only covers vert.x
+
+
+standalone
+------------
+example on how to start camel context and add route builders. using org.apache.camel.main.Main class to make it easy to run standalone
+Main.run blocks to keep JVM running. also ensures that you trigger on JVM shutdown signals and perform a graceful shutdown of Camel so your Camel applications terminate gracefully
+
+The Main class has additional methods for configuration, such as property placeholders, and for registering beans in the registry. You can find details by exploring the methods available on the main instance.
+
+Running Camel standalone is the simplest and smallest runtime for running Camel—
+it’s just Camel. You can quickly get started, but it has its limits. For example, you need
+to figure out how to package your application code with the needed JARs from Camel
+and third-­party dependencies, and how to run that as a Java application. You could
+try to build a fat JAR, but that creates problems if duplicate files need to be merged
+together. But if you’re using Docker containers, you can package your application
+together in a Docker image, with all the JARs and your application code separated, and
+still make it easy to run your application. We cover Camel and Docker in chapter 18.
+The Main class has its limitations, and you may want to go for some of the more pow-
+erful runtimes, such as WildFly Swarm or Spring Boot, which we cover in sections to
+follow. But first, let’s talk about Camel and CDI.
+
+cdi
+-------
+requires camel-cdi
+
+route builders can be annotated to define the scope of the bean, no need to add the routebuilder to the main
+Configuration with properties can also be set (see chapter7/cdi)
+example also uses the Endpoint class and uses CDI to inject the URI
+also uses a bean via DI to handle the request
+
+CDI supports an event notification mechanism that allows you to listen for certain
+events and react to them. This can be used to listen to Camel lifecycle events such as
+when Camel Context or routes start or stop.
+
+@Singleton
+public class HelloConfiguration {
+void onContextStarted(@Observes CamelContextStartedEvent event) { // listens for CamelContextStartedEvent to happen
+System.out.println("***************************************");
+System.out.println("* Camel started " + event.getContext().getName());
+System.out.println("***************************************");
+}
+
+XML DSL also supported
+
+using Jboss Weld (reference implementtion of JavaEE CDI) but it's not meant for standalone use use in more powerful thorntail or spring boot instead
+
+Wildfly Swarm
+------------------
+essentially Jave EE app in a fat jar binary, spring boot for Java EE
+https://thorntail.io/generator/
+
+uses undertow as the http server not jetty
+
+see the example pom in chapter7/wildfy-swarm and notice the dependency uses are different group id. 
+
+the reason is that WildFly Swarm provides numerous supported and
+curated dependencies. These dependencies are called fragments in WildFly Swarm. In
+this case, there’s a fragment for making Camel and Undertow work together, hence
+you must use this dependency. if there is no fragment, then use the regular component. for example camel-stream doesn't have a wildfly fragment
+
+still possible to use XML DSL
+
+if you had the monitor component in the pom, you will be provided with a /health endpoint
+
+springboot
+====================
+    <!-- camel -->
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-spring-boot-starter</artifactId>
+    </dependency>
+    <!-- notice we use -starter components from Camel which are designed to use with Spring Boot -->
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-geocoder-starter</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-servlet-starter</artifactId>
+    </dependency>
+  </dependencies>
+
+xml dsl also supported
+
+
+CALLING OTHER MICROSERVICES
+

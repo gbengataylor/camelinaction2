@@ -15,10 +15,10 @@ public class CartRoute extends RouteBuilder {
     public void configure() throws Exception {
 
         // use jetty for rest service
-        restConfiguration("jetty").port("{{port}}").contextPath("api")
+        restConfiguration("jetty").port("{{port}}").contextPath("api") 
                 // turn on json binding
                 .bindingMode(RestBindingMode.json)
-                // turn off binding error on empty beans
+                // turn off binding error on empty beans 
                 .dataFormatProperty("disableFeatures", "FAIL_ON_EMPTY_BEANS")
                 // enable swagger api documentation
                 .apiContextPath("api-doc")
@@ -28,7 +28,7 @@ public class CartRoute extends RouteBuilder {
         rest("/cart").consumes("application/json").produces("application/json")
             // get returns List<CartDto>
             .get().outType(CartDto[].class).description("Returns the items currently in the shopping cart")
-                .to("bean:cart?method=getItems")
+                .to("bean:cart?method=getItems") // call the named bean cart and invokes the getItems method
             // get accepts CartDto
             .post().type(CartDto.class).description("Adds the item to the shopping cart")
                 .to("bean:cart?method=addItem")

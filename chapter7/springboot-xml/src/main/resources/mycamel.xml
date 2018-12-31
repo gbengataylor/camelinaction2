@@ -10,6 +10,7 @@
 
     <route>
       <from uri="timer:foo"/>
+      <!-- uses a properties place hold -->
       <log message="Spring Boot says {{hello}} to me"/>
     </route>
 
