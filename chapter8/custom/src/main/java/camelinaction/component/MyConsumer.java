@@ -18,7 +18,7 @@ public class MyConsumer extends ScheduledPollConsumer {
     }
 
     @Override
-    protected int poll() throws Exception {
+    protected int poll() throws Exception { //called every 500ms since it's a ScheduledPollConsumer
         Exchange exchange = endpoint.createExchange();
 
         // create a message body
