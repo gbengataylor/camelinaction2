@@ -10,7 +10,7 @@ public class OrderRoute extends RouteBuilder {
         // and use the simple binding style which is recommended to use
         from("cxfrs:http://localhost:8080?resourceClasses=camelinaction.RestOrderService&bindingStyle=SimpleConsumer")
             // call the route based on the operation invoked on the REST web service
-            .toD("direct:${header.operationName}");
+            .toD("direct:${header.operationName}"); // uses they dynamic EIP pattern to route
 
         // routes that implement the REST services
         from("direct:createOrder")

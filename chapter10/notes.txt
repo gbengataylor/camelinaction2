@@ -1,0 +1,398 @@
+RESTful web services
+
+¡	 Apache CXF—Using only CXF to build REST services
+¡	 Apache CXF with Camel—Same with Camel included
+¡	 Camel Restlet component—Using one of the simplest Camel REST components
+¡	 Camel CXF REST component—Using Camel with the CXF REST component
+
+10.1.2	 Using JAX-­RS with REST services
+Java API for RESTful Web Services (JAX-­RS) is a Java standard API that provides sup-
+port for creating web services.
+
+the book has examples in the cxf-rest and cxf-rest-json directories.
+unfortunately there is no jersey component in Camel and there are no plans since apache cxf is a sister project of camel
+
+Table 10.3   Pros and cons of using a pure CXF-­RS approach for REST services
+Pros
+Uses the JAX-­RS standard. Con
+ Not possible to define REST services without having to write Java code.
+
+Pros
+Apache CXF-­RS is a well-­established REST library.
+Cons
+Camel isn’t integrated first class.
+
+Pros
+The REST service allows developers full control of what happens as they can change the source code.
+Cons
+Configuring CXF-RS can be nontrivial.
+There’s no CXF in Action book.
+
+10.1.3	 Using Camel in an existing JAX-­RS application
+cxf-rest-camel
+
+YOU CAN use a producerTemplate to call the route
+
+Pros
+Uses the JAX-­RS standard.
+Cons
+ Not possible to define REST services without having to write Java code.
+
+Pros
+Apache CXF-­RS is a well-­established REST library. 
+Con
+Configuring CXF-­RS can be nontrivial.
+
+Pro
+The REST service allows developers full control of what happens as they can change the source code. 
+Con
+Need to set up both CXF and Camel lifecycle separately.
+
+Pro
+Camel is integrated using dependency injection into the JAX-­RS resource class. 
+Con
+There’s no CXF in Action book.
+
+10.1.4	 Using camel-­restlet with REST services
+
+The camel-­restlet component is one of the easiest components to use for hosting REST
+services as Camel routes. The component has also been part of Apache Camel for a
+long time (it was included at the end of 2008)
+
+from("restlet:http://0.0.0.0:8080/orders?restletMethod=POST")
+.bean("orderService", "createOrder");
+
+from("restlet:http://0.0.0.0:8080/orders/{id}?restletMethod=DELETE")
+.bean("orderService", "cancelOrder(${header.id})");
+
+The restlet component allows you to map dynamic values from the context-­path by using
+the { } style, which you use to map the ID from context-­path to a header on the Camel
+message . see figure 10.1 for a mapping
+
+Each dynamic value in the context-­path declared by {key} is mapped to a
+corresponding Camel message header when Camel routes the incoming REST. It’s important to not mix this syntax with Camel’s property placeholder. The map-
+ping syntax uses a single { } pair, whereas Camel’s property placeholder uses double
+{{ }} pairs.
+
+Table 10.5   Pros and cons of using camel-­restlet
+Pros
+Easy to get started. 
+Con
+Doesn’t use the JAX-­RS standard.
+
+Pro
+Restlet is an established REST library. 
+Con
+camel-­restlet hasn’t been integrated with Google Gson or Jackson to make using JSON easy.
+
+10.1.5	 Using camel-­cxf with REST services
+
+The camel-cxf component includes support for both REST and SOAP web services. As
+we noted previously, the difference between using plain Apache CXF and the camel-­cxf
+component is that the latter is Camel first, whereas CXF is CXF first. By first, we mean
+that either CXF or Camel is the primary driver behind how the wheel is spinnin
+
+with this component the cxf rest server can be configured using
+
+CAMEL-configured endpoint
+imeans that you configure the CXF REST server as a regular Camel endpoint by using URI notation
+
+
+e.g
+        // use CXF-RS to setup the REST web service using the resource class
+        // and use the simple binding style which is recommended to use
+        from("cxfrs:http://localhost:8080?resourceClasses=camelinaction.RestOrderService&bindingStyle=SimpleConsumer")
+            // call the route based on the operation invoked on the REST web service
+            .toD("direct:${header.operationName}"); // use this to route using the Dynamic EIP Pattern
+
+When using camel-­cxf, the REST web service is defined in a single route  where you
+configure the hostname and port the REST server uses. When using camel-­cxf, it’s
+recommended to use the SimpleConsumer binding style, which binds to the natural
+JAX-­RS types and Camel headers. The default binding style uses the org.apache.cxf.
+message.MessageContentsList type from CXF, which is a lower-­level type like Camel’s
+Exchange . The last configured option is the resourceClasses option  , which refers
+to a class or interface that declares the REST web service by using the JAX-­RS standard.
+
+the resource class can be an interface since camel-cxf only uses JAX-RS as a contract to setup the REST service not the implementation of the service/controller.
+
+CXF-configured bean
+Apache CXF was created many years ago, when the Spring Framework was popular and
+using Spring was dominated by XML configuration. This affected CXF, as the natural
+way of configuring CXF is the Spring XML style. The CXF-­configured bean is such a style
+
+see listing 10.7 for example
+
+
+Table 10.6   Pros and cons of using camel-­cxf for REST services
+Pros
+Uses the JAX-RS standard.
+Con
+ Not possible to define REST services without having to write Java code.
+
+Pros
+Apache CXF-RS is a well-­established REST library.
+Con
+ The code in the REST service isn’t executed, and developers are allowed full control only of what happens in Camel routes.
+
+Pros
+CXF-RS is integrated with Camel as first class.
+Con
+There’s no CXF in Action book.
+
+
+10.2	 The Camel Rest DSL
+
+Rest DSL design
+The goal of Rest DSL is to make defining REST services at a high abstraction level easy
+and quick, and to do it the Camel way. The Rest DSL is intended to support 95% of use
+cases. For some advanced use cases, you may have to opt out of the Rest DSL and use
+an alternative solution, such as using JAX-­RS directly with Apache CXF or Jersey. Initially,
+the Rest DSL supported only exposing RESTful services from Camel (for example, as a
+consumer) and there was no support for calling existing external RESTful services. But
+from Camel 2.19 onward, the Rest DSL has preliminary support for calling RESTful ser-
+vices as a producer. This chapter focuses on the consumer side and has only limited
+coverage of the producer side.
+
+e.g
+        // configure rest-dsl
+        restConfiguration()
+           // to use spark-rest component and run on port 8081
+	   // you can specify context path also. by default, it is /
+            .component("spark-rest").port(8080);
+
+        // rest services under the orders context-path
+        rest("/orders")
+            .get("{id}")
+                .to("bean:orderService?method=getOrder(${header.id})")
+            .post()
+                .to("bean:orderService?method=createOrder")
+            .put()
+                .to("bean:orderService?method=updateOrder")
+            .delete("{id}")
+                .to("bean:orderService?method=cancelOrder(${header.id})");
+
+listing 10.9 has XML DSL example
+
+  <!-- the order service -->
+  <bean id="orderService" class="camelinaction.DummyOrderService"/>
+
+  <camelContext id="camel" xmlns="http://camel.apache.org/schema/spring">
+
+    <!-- configure rest-dsl to use spark-rest component and run on port 8080 -->
+    <restConfiguration component="spark-rest" port="8080"/>
+
+    <!-- rest services under the orders context-path -->
+    <rest path="/orders">
+      <get uri="{id}">
+        <to uri="bean:orderService?method=getOrder(${header.id})"/>
+      </get>
+      <post>
+        <to uri="bean:orderService?method=createOrder"/>
+      </post>
+      <put>
+        <to uri="bean:orderService?method=updateOrder"/>
+      </put>
+      <delete uri="{id}">
+        <to uri="bean:orderService?method=cancelOrder(${header.id})"/>
+      </delete>
+    </rest>
+
+  </camelContext>
+
+the rest DSL essentially maps to this
+<route>
+<from uri="rest:get:/orders/{id}?componentName=spark-rest"/> <!-- this just maps to the generic rest Camel component in camel-core"-->
+<to uri="bean:orderService?method=getOrder(${header.id})"/>
+...
+</route>
+
+A rest dsl is essentially just a camel route.
+
+what is being used to setup the http server and service request from clients?
+
+available components for http server
+¡	 camel-­jetty—Using the Jetty HTTP server
+¡	 camel-­netty4-http—Using the Netty library
+¡	 camel-­restlet—Using the Restlet library
+¡	 camel-­servlet—Using Java Servlet for servlets or Java EE servers
+¡	 camel-­spark-­rest—Using the Java Spark REST library
+¡	 camel-­undertow—Using the JBoss Undertow HTTP server
+
+apache cxf not available as it's too tighlty coupled to jax-rs programming model but this might change in future
+
+10.2.4	 Configuring Rest DSL
+
+¡	 Common—Common options
+¡	 Component—To configure options on the chosen Camel component to be used
+¡	 Endpoint—To configure endpoint-­specific options from the chosen component
+on the endpoint that are used to create the consumer in the Camel route hosting the REST service
+¡	 Consumer—To configure consumer-­specific options in the Camel route that hosts
+the REST service
+¡	 Data format—To configure data-­format-­specific options that are used for XML
+and JSON binding
+¡	 CORS headers—To configure CORS headers to include in the HTTP responses
+
+see configuring common options table 10.7
+component is required
+scheme (http is default)
+hostname
+port
+context path
+restHostNameResolver
+
+restConfiguration()
+.component("spark-­rest").contextPath("/myservices").port(8080);
+
+when selecting a component via rest DSL, you will need to add the appropriate dependency in the pom.xml
+
+Configuring component, endpoint and consumer options
+e.g
+restConfiguration()
+.component("jetty").port(8080)
+.componentProperty("minThreads", "1")
+.componentProperty("maxThreads", "8");
+.endpointProperty("handlers", "#securityHandler"); //jetty has support for basic auth so you can set to use a security handler
+							// the # prefix tells Camel to get it from the registry
+							// this could have been set in a bean using camel dsl or using CDI
+you can also set .comsumerProperty(..)
+
+
+Configuring Data formats
+types of bindings
+off : Binding is turned off. This is the default mode.
+auto : Binding is automatically enabled if the necessary data format is available on the
+classpath. For example, providing camel-­jaxb on the classpath enables support
+for XML binding. Having camel-­jackson on the classpath enables support for JSON binding.
+json : Binding to/from JSON is enabled and requires a JSON-­capable data format on the
+classpath, such as camel-­jackson.
+xml : Binding to/from XML is enabled and requires camel-­jaxb on the classpath.
+json_xml:  Binding to/from JSON and XML is enabled and requires both data formats to be
+on the classpath.
+
+e.g
+
+        restConfiguration()
+           // to use spark-rest component and run on port 8080
+            .component("spark-rest").port(8080)
+            // and enable json binding mode
+            .bindingMode(RestBindingMode.json)
+            // lets enable pretty printing json responses
+            .dataFormatProperty("prettyPrint", "true");
+
+        // rest services under the orders context-path
+        rest("/orders")
+            // need to specify the POJO types the binding is using (otherwise json binding defaults to Map based)
+            .get("{id}").outType(Order.class)
+                .to("bean:orderService?method=getOrder(${header.id})")
+                // need to specify the POJO types the binding is using (otherwise json binding defaults to Map based)
+            .post().type(Order.class)
+                .to("bean:orderService?method=createOrder")
+                // need to specify the POJO types the binding is using (otherwise json binding defaults to Map based)
+            .put().type(Order.class)
+                .to("bean:orderService?method=updateOrder")
+            .delete("{id}")
+                .to("bean:orderService?method=cancelOrder(${header.id})");
+
+if using spring boot you can setup these configurations in the app.properties
+camel.rest.component=undertow
+camel.rest.port=8080
+camel.rest.binding-mode=json
+camel.rest.data-­format-­property.prettyPrint=true
+
+
+HANDLING exceptions
+
+e.g
+        // configure rest-dsl
+        restConfiguration()
+           // to use undertow component and run on port 8080
+            .component("undertow").port(8080)
+            // and enable json/xml binding mode
+            .bindingMode(RestBindingMode.json_xml)
+            // lets enable pretty printing json responses
+            .dataFormatProperty("prettyPrint", "true");
+
+        // error handling to return custom HTTP status codes for the various exceptions
+
+        onException(OrderInvalidException.class)
+            .handled(true)
+            // use HTTP status 400 when input data is invalid
+            .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(400))
+            .setBody(constant(""));
+
+
+CALLING resful services using REST DSL
+
+see rest-producer dir
+
+        // use http4 with rest dsl producer
+        restConfiguration().producerComponent("http4")
+            // to call rest service on localhost:8080 (the REST service from GeoRestController)
+            .host("localhost").port(8080);
+
+        // trigger the route every 5th second
+        from("timer:foo?period=5000")
+            // set a random city to use
+            .setHeader("city", RestProducerRoute::randomCity)
+            // use the rest producer to call the rest service
+            .to("rest:get:country/{city}")
+            // transform the response to grab a nice human readable
+            .transform().jsonpath("$.results[0].formattedAddress")
+            // print the response
+            .log("${body}");
+
+
+SWAGGER DOCUMENTATION
+
+you can add swagger annotations to your model and rest service
+when using cxf, just need to setup the swagger config
+
+what about using with REST DSL?
+¡	 Add camel-­swagger-­java as a dependency
+¡	 Turn on Swagger in the Rest DSL configuration
+
+ALL without use of Swagger annotation in source code
+
+        // configure rest-dsl
+        restConfiguration()
+           // to use undertow component and run on port 8080
+            .component("undertow").port(8080)
+            // and enable json/xml binding mode
+            .bindingMode(RestBindingMode.json_xml)
+            // lets enable pretty printing json responses
+            .dataFormatProperty("prettyPrint", "true")
+            // lets enable swagger api
+            .apiContextPath("api-doc")
+            // and setup api properties
+            .apiProperty("api.version", "2.0.0")
+            .apiProperty("api.title", "Rider Auto Parts Order Services")
+            .apiProperty("api.description", "Order Service that allows customers to submit orders and query status")
+            .apiProperty("api.contact.name", "Rider Auto Parts");
+
+
+            .get("{id}").outType(Order.class)
+                .description("Service to get details of an existing order")
+                .param().name("id").description("The order id").endParam()
+                .responseMessage().code(200).message("The order with the given id").endResponseMessage()
+                .responseMessage().code(404).message("Order not found").endResponseMessage()
+                .responseMessage().code(500).message("Server error").endResponseMessage()
+                .to("bean:orderService?method=getOrder(${header.id})")
+
+
+xml examples in servlet-swagger-xml
+
+USING CORS and the Swagger web console
+
+restConfiguration()
+.component("undertow").port(8080)
+.bindingMode(RestBindingMode.json_xml)
+.dataFormatProperty("prettyPrint", "true")
+.enableCORS(true) // ENABLE CORS
+.apiContextPath("api-­doc")
+
+you can customize by
+.corsHeaderProperty("Access-­Control-­Allow-­Origin", "rider.com") //users only in rider.com domain are allowed to access restful services
+.corsHeaderProperty("Access-­Control-­Max-­Age", "300");
+
+
+
